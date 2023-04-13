@@ -12,6 +12,7 @@
 
 DigitalIn mq2(PE_12);
 
+
 //=====[Declaration of external public global variables]=======================
 
 //=====[Declaration and initialization of public global variables]=============
@@ -24,6 +25,8 @@ DigitalIn mq2(PE_12);
 
 void gasSensorInit()
 {
+    // Se define el pin mq2 como PullUp para usar un pulsador en lugar del sensor
+    mq2.mode(PullUp);
 }
 
 void gasSensorUpdate()
@@ -32,7 +35,7 @@ void gasSensorUpdate()
 
 bool gasSensorRead()
 {
-    return mq2;
+    return mq2.read();
 }
 
 //=====[Implementations of private functions]==================================
