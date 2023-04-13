@@ -15,6 +15,9 @@
 
 //=====[Declaration of private defines]========================================
 
+#define MAX_TIME_READ_STEPS 1000
+#define TIME_READ_STEP 10
+
 //=====[Declaration of private data types]=====================================
 
 typedef enum{
@@ -22,6 +25,11 @@ typedef enum{
     PC_SERIAL_GET_CODE,
     PC_SERIAL_SAVE_NEW_CODE,
 } pcSerialComMode_t;
+
+typedef enum{
+    PC_SERIAL_READ_STATUS_OK,
+    PC_SERIAL_READ_STATUS_ERROR,
+} pcSerialReadStatus_t;
 
 //=====[Declaration and initialization of public global objects]===============
 
@@ -41,7 +49,7 @@ static int numberOfCodeChars = 0;
 
 //=====[Declarations (prototypes) of private functions]========================
 
-static void pcSerialComStringRead( char* str, int strLength );
+static pcSerialReadStatus_t pcSerialComStringRead( char* str, int strLength );
 
 static void pcSerialComGetCodeUpdate( char receivedChar );
 static void pcSerialComSaveNewCodeUpdate( char receivedChar );
@@ -59,6 +67,9 @@ static void commandShowCurrentTemperatureInFahrenheit();
 static void commandSetDateAndTime();
 static void commandShowDateAndTime();
 static void commandShowStoredEvents();
+
+static void clearArray(char** str);
+
 
 //=====[Implementations of public functions]===================================
 
@@ -116,14 +127,33 @@ void pcSerialComCodeCompleteWrite( bool state )
 
 //=====[Implementations of private functions]==================================
 
-static void pcSerialComStringRead( char* str, int strLength )
+static pcSerialReadStatus_t pcSerialComStringRead( char* str, int strLength )
 {
     int strIndex;
+    int timeReadSteps = 0;
+    bool charRead = false;
+    pcSerialReadStatus_t status = PC_SERIAL_READ_STATUS_OK;
+
     for ( strIndex = 0; strIndex < strLength; strIndex++) {
-        uartUsb.read( &str[strIndex] , 1 );
-        uartUsb.write( &str[strIndex] ,1 );
+        for ( timeReadSteps = 0; timeReadSteps < MAX_TIME_READ_STEPS &&
+                                !charRead &&
+                                status == PC_SERIAL_READ_STATUS_OK; timeReadSteps++) {
+            if(uartUsb.readable()) {
+                uartUsb.read( &str[strIndex] , 1 );
+                uartUsb.write( &str[strIndex] ,1 );
+                charRead = true;
+            }
+            delay(TIME_READ_STEP);
+        }
+        if(charRead == false) {
+            status = PC_SERIAL_READ_STATUS_ERROR;
+        }
+        else {
+            charRead = false;
+        }
     }
     str[strLength]='\0';
+    return status;
 }
 
 static void pcSerialComGetCodeUpdate( char receivedChar )
@@ -251,6 +281,13 @@ static void commandShowCurrentTemperatureInFahrenheit()
     pcSerialComStringWrite( str );  
 }
 
+void clearArray(char **str) {
+    int i = 0;
+    for(i = 0; i <= int(sizeof(*str)/sizeof(char)); i++) {
+        (*str)[i] = '\0';
+    }
+}
+
 static void commandSetDateAndTime()
 {
     char year[5] = "";
@@ -259,35 +296,53 @@ static void commandSetDateAndTime()
     char hour[3] = "";
     char minute[3] = "";
     char second[3] = "";
+    pcSerialReadStatus_t status = PC_SERIAL_READ_STATUS_ERROR;
+
     
     pcSerialComStringWrite("\r\nType four digits for the current year (YYYY): ");
-    pcSerialComStringRead( year, 4);
-    pcSerialComStringWrite("\r\n");
-
-    pcSerialComStringWrite("Type two digits for the current month (01-12): ");
-    pcSerialComStringRead( month, 2);
-    pcSerialComStringWrite("\r\n");
-
-    pcSerialComStringWrite("Type two digits for the current day (01-31): ");
-    pcSerialComStringRead( day, 2);
-    pcSerialComStringWrite("\r\n");
-
-    pcSerialComStringWrite("Type two digits for the current hour (00-23): ");
-    pcSerialComStringRead( hour, 2);
-    pcSerialComStringWrite("\r\n");
-
-    pcSerialComStringWrite("Type two digits for the current minutes (00-59): ");
-    pcSerialComStringRead( minute, 2);
-    pcSerialComStringWrite("\r\n");
-
-    pcSerialComStringWrite("Type two digits for the current seconds (00-59): ");
-    pcSerialComStringRead( second, 2);
-    pcSerialComStringWrite("\r\n");
+    if(pcSerialComStringRead( year, 4) == PC_SERIAL_READ_STATUS_OK) {
+        pcSerialComStringWrite("\r\n");
+        pcSerialComStringWrite("Type two digits for the current month (01-12): ");
+        if(pcSerialComStringRead( month, 2) == PC_SERIAL_READ_STATUS_OK) {
+            pcSerialComStringWrite("\r\n");
+            pcSerialComStringWrite("Type two digits for the current day (01-31): ");
+            if(pcSerialComStringRead( day, 2) == PC_SERIAL_READ_STATUS_OK) {
+                pcSerialComStringWrite("\r\n");
+                pcSerialComStringWrite("Type two digits for the current hour (00-23): ");
+                if(pcSerialComStringRead( hour, 2) == PC_SERIAL_READ_STATUS_OK) {
+                    pcSerialComStringWrite("\r\n");
+                    pcSerialComStringWrite("Type two digits for the current minutes (00-59): ");
+                    if(pcSerialComStringRead( minute, 2) == PC_SERIAL_READ_STATUS_OK) {
+                        pcSerialComStringWrite("\r\n");
+                        pcSerialComStringWrite("Type two digits for the current seconds (00-59): ");
+                        if(pcSerialComStringRead( second, 2) == PC_SERIAL_READ_STATUS_OK) {
+                            status = PC_SERIAL_READ_STATUS_OK;
+                        }
+                    }
+                }
+            }
+        }
+    }
     
-    pcSerialComStringWrite("Date and time has been set\r\n");
 
-    dateAndTimeWrite( atoi(year), atoi(month), atoi(day), 
+    
+    
+    pcSerialComStringWrite("\r\n");
+    if(status == PC_SERIAL_READ_STATUS_OK) {
+        pcSerialComStringWrite("Date and time has been set\r\n");
+        dateAndTimeWrite( atoi(year), atoi(month), atoi(day), 
         atoi(hour), atoi(minute), atoi(second) );
+    }
+    else {
+        pcSerialComStringWrite("Timeout eror for date and time setting\r\n");
+        /*clearArray(&year);
+        year.clear();
+        month.clear();
+        day.clear();
+        hour.clear();
+        minute.clear();
+        second.clear();*/
+    }
 }
 
 static void commandShowDateAndTime()
