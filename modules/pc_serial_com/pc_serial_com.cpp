@@ -24,6 +24,7 @@ typedef enum{
     PC_SERIAL_COMMANDS,
     PC_SERIAL_GET_CODE,
     PC_SERIAL_SAVE_NEW_CODE,
+    PC_SERIAL_SAVE_DATE,
 } pcSerialComMode_t;
 
 typedef enum{
@@ -70,6 +71,8 @@ static void commandShowStoredEvents();
 
 static void clearArray(char** str);
 
+static void pcSerialComSaveDate(char);
+
 
 //=====[Implementations of public functions]===================================
 
@@ -108,6 +111,10 @@ void pcSerialComUpdate()
             case PC_SERIAL_SAVE_NEW_CODE:
                 pcSerialComSaveNewCodeUpdate( receivedChar );
             break;
+
+            case PC_SERIAL_SAVE_DATE:
+                pcSerialComSaveDate( receivedChar);
+            break;
             default:
                 pcSerialComMode = PC_SERIAL_COMMANDS;
             break;
@@ -127,7 +134,7 @@ void pcSerialComCodeCompleteWrite( bool state )
 
 //=====[Implementations of private functions]==================================
 
-static pcSerialReadStatus_t pcSerialComStringRead( char* str, int strLength )
+/*static pcSerialReadStatus_t pcSerialComStringRead( char* str, int strLength )
 {
     int strIndex;
     int timeReadSteps = 0;
@@ -154,7 +161,7 @@ static pcSerialReadStatus_t pcSerialComStringRead( char* str, int strLength )
     }
     str[strLength]='\0';
     return status;
-}
+}*/
 
 static void pcSerialComGetCodeUpdate( char receivedChar )
 {
@@ -281,26 +288,96 @@ static void commandShowCurrentTemperatureInFahrenheit()
     pcSerialComStringWrite( str );  
 }
 
-void clearArray(char **str) {
-    int i = 0;
-    for(i = 0; i <= int(sizeof(*str)/sizeof(char)); i++) {
-        (*str)[i] = '\0';
-    }
-}
-
 static void commandSetDateAndTime()
 {
-    char year[5] = "";
-    char month[3] = "";
-    char day[3] = "";
-    char hour[3] = "";
-    char minute[3] = "";
-    char second[3] = "";
+    pcSerialComMode = PC_SERIAL_SAVE_DATE;
+    pcSerialComStringWrite("\r\nType four digits for the current year (YYYY): ");
+
+}
+
+static void pcSerialComSaveDate(char receivedChar) {
+/**
+* La función bloqueante se llamaba desde esta función. Se agregó el estado PC_SERIAL_SAVE_DATE
+* al enum pcSerialComMode_t. Cuando se escriba una "S", se cambiará el estado y cada vez que
+* se reciba un char por puerto serie, se guardará en alguna de las variables de esta función.
+* Para garantizar que se guarden se utilizaron variables static.
+*/
+    static char year[5] = "";
+    static char month[3] = "";
+    static char day[3] = "";
+    static char hour[3] = "";
+    static char minute[3] = "";
+    static char second[3] = "";
+    static int i = 0;
     pcSerialReadStatus_t status = PC_SERIAL_READ_STATUS_ERROR;
 
-    
-    pcSerialComStringWrite("\r\nType four digits for the current year (YYYY): ");
-    if(pcSerialComStringRead( year, 4) == PC_SERIAL_READ_STATUS_OK) {
+
+    if(0<= i && i < 4) {
+        year[i] = receivedChar;
+        if(i == 3) {
+            year[4] = '\0';
+            pcSerialComStringWrite("\r\n");
+            pcSerialComStringWrite("Type two digits for the current month (01-12): ");
+        }
+    }
+
+    if(4<= i && i < 6) {
+        month[i-4] = receivedChar;
+        if(i-4 == 1) {
+            month[2] = '\0';
+            pcSerialComStringWrite("\r\n");
+            pcSerialComStringWrite("Type two digits for the current day (01-31): ");
+        }
+        
+    }
+
+    if(6<= i && i < 8) {
+        day[i-6] = receivedChar;
+        if(i-6 == 1) {
+            day[2] = '\0';
+            pcSerialComStringWrite("\r\n");
+            pcSerialComStringWrite("Type two digits for the current hour (00-23): ");
+        }
+        
+    }
+
+    if(8<= i && i < 10) {
+        hour[i-8] = receivedChar;
+        if(i-8 == 1) {
+            hour[2] = '\0';
+            pcSerialComStringWrite("\r\n");
+            pcSerialComStringWrite("Type two digits for the current minutes (00-59): ");
+        }
+        
+    }
+
+    if(10<= i && i < 12) {
+        minute[i-10] = receivedChar;
+        if(i-10 == 1) {
+            minute[2] = '\0';
+            pcSerialComStringWrite("\r\n");
+            pcSerialComStringWrite("Type two digits for the current seconds (00-59): ");
+        }
+        
+    }
+
+    if(12<= i && i < 14) {
+        second[i-12] = receivedChar;
+        if(i-12 == 1) {
+            second[2] = '\0';
+            pcSerialComStringWrite("\r\n");
+            pcSerialComStringWrite("Date and time has been set\r\n");
+            dateAndTimeWrite( atoi(year), atoi(month), atoi(day), 
+            atoi(hour), atoi(minute), atoi(second) );
+            i = -1;
+            pcSerialComMode = PC_SERIAL_COMMANDS;
+        }
+        
+    }
+    i++;
+
+
+/*    if(pcSerialComStringRead( year, 4) == PC_SERIAL_READ_STATUS_OK) {
         pcSerialComStringWrite("\r\n");
         pcSerialComStringWrite("Type two digits for the current month (01-12): ");
         if(pcSerialComStringRead( month, 2) == PC_SERIAL_READ_STATUS_OK) {
@@ -323,7 +400,7 @@ static void commandSetDateAndTime()
             }
         }
     }
-    
+   
 
     
     
@@ -334,7 +411,7 @@ static void commandSetDateAndTime()
         atoi(hour), atoi(minute), atoi(second) );
     }
     else {
-        pcSerialComStringWrite("Timeout eror for date and time setting\r\n");
+        pcSerialComStringWrite("Timeout eror for date and time setting\r\n"); */
         /*clearArray(&year);
         year.clear();
         month.clear();
@@ -342,7 +419,6 @@ static void commandSetDateAndTime()
         hour.clear();
         minute.clear();
         second.clear();*/
-    }
 }
 
 static void commandShowDateAndTime()
