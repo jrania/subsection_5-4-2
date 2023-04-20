@@ -44,6 +44,8 @@ int main()
         los sensores y las alarmas
         */
     while (true) {
+        /**
+        */
         smartHomeSystemUpdate();
     }
 }

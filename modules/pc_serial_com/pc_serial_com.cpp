@@ -27,11 +27,6 @@ typedef enum{
     PC_SERIAL_SAVE_DATE,
 } pcSerialComMode_t;
 
-typedef enum{
-    PC_SERIAL_READ_STATUS_OK,
-    PC_SERIAL_READ_STATUS_ERROR,
-} pcSerialReadStatus_t;
-
 //=====[Declaration and initialization of public global objects]===============
 
 UnbufferedSerial uartUsb(USBTX, USBRX, 115200);
@@ -133,35 +128,6 @@ void pcSerialComCodeCompleteWrite( bool state )
 }
 
 //=====[Implementations of private functions]==================================
-
-/*static pcSerialReadStatus_t pcSerialComStringRead( char* str, int strLength )
-{
-    int strIndex;
-    int timeReadSteps = 0;
-    bool charRead = false;
-    pcSerialReadStatus_t status = PC_SERIAL_READ_STATUS_OK;
-
-    for ( strIndex = 0; strIndex < strLength; strIndex++) {
-        for ( timeReadSteps = 0; timeReadSteps < MAX_TIME_READ_STEPS &&
-                                !charRead &&
-                                status == PC_SERIAL_READ_STATUS_OK; timeReadSteps++) {
-            if(uartUsb.readable()) {
-                uartUsb.read( &str[strIndex] , 1 );
-                uartUsb.write( &str[strIndex] ,1 );
-                charRead = true;
-            }
-            delay(TIME_READ_STEP);
-        }
-        if(charRead == false) {
-            status = PC_SERIAL_READ_STATUS_ERROR;
-        }
-        else {
-            charRead = false;
-        }
-    }
-    str[strLength]='\0';
-    return status;
-}*/
 
 static void pcSerialComGetCodeUpdate( char receivedChar )
 {
@@ -375,50 +341,6 @@ static void pcSerialComSaveDate(char receivedChar) {
         
     }
     i++;
-
-
-/*    if(pcSerialComStringRead( year, 4) == PC_SERIAL_READ_STATUS_OK) {
-        pcSerialComStringWrite("\r\n");
-        pcSerialComStringWrite("Type two digits for the current month (01-12): ");
-        if(pcSerialComStringRead( month, 2) == PC_SERIAL_READ_STATUS_OK) {
-            pcSerialComStringWrite("\r\n");
-            pcSerialComStringWrite("Type two digits for the current day (01-31): ");
-            if(pcSerialComStringRead( day, 2) == PC_SERIAL_READ_STATUS_OK) {
-                pcSerialComStringWrite("\r\n");
-                pcSerialComStringWrite("Type two digits for the current hour (00-23): ");
-                if(pcSerialComStringRead( hour, 2) == PC_SERIAL_READ_STATUS_OK) {
-                    pcSerialComStringWrite("\r\n");
-                    pcSerialComStringWrite("Type two digits for the current minutes (00-59): ");
-                    if(pcSerialComStringRead( minute, 2) == PC_SERIAL_READ_STATUS_OK) {
-                        pcSerialComStringWrite("\r\n");
-                        pcSerialComStringWrite("Type two digits for the current seconds (00-59): ");
-                        if(pcSerialComStringRead( second, 2) == PC_SERIAL_READ_STATUS_OK) {
-                            status = PC_SERIAL_READ_STATUS_OK;
-                        }
-                    }
-                }
-            }
-        }
-    }
-   
-
-    
-    
-    pcSerialComStringWrite("\r\n");
-    if(status == PC_SERIAL_READ_STATUS_OK) {
-        pcSerialComStringWrite("Date and time has been set\r\n");
-        dateAndTimeWrite( atoi(year), atoi(month), atoi(day), 
-        atoi(hour), atoi(minute), atoi(second) );
-    }
-    else {
-        pcSerialComStringWrite("Timeout eror for date and time setting\r\n"); */
-        /*clearArray(&year);
-        year.clear();
-        month.clear();
-        day.clear();
-        hour.clear();
-        minute.clear();
-        second.clear();*/
 }
 
 static void commandShowDateAndTime()
